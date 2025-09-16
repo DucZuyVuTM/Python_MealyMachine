@@ -48,28 +48,45 @@ class FiniteStateMachine:
 
     def select(self, method):
         """Execute a transition method"""
-        # Check if method is known in the FSM
-        if method not in self.known_methods:
+        if not self._is_valid_method(method):
             return 'unknown'
 
-        # Find valid transitions for current state and method
-        valid_transitions = []
-        for key, (next_state, output) in self.transitions.items():
-            current_state, trans_method, condition = key
-            if current_state == self.current_state and trans_method == method:
-                # Check condition if it exists
-                if condition is None:
-                    valid_transitions.append((next_state, output))
-                else:
-                    # Evaluate condition
-                    if self._evaluate_condition(condition):
-                        valid_transitions.append((next_state, output))
-
+        valid_transitions = self._find_valid_transitions(method)
         if not valid_transitions:
             return 'unsupported'
 
-        # Execute the first valid transition
-        next_state, output = valid_transitions[0]
+        return self._execute_transition(valid_transitions[0], method)
+
+    def _is_valid_method(self, method):
+        """Check if method is known in the FSM"""
+        return method in self.known_methods
+
+    def _find_valid_transitions(self, method):
+        """Find all valid transitions for current state and method"""
+        valid_transitions = []
+        for key, (next_state, output) in self.transitions.items():
+            current_state, trans_method, condition = key
+            if self._is_matching_transition(current_state,
+                                            trans_method, method):
+                if self._satisfies_condition(condition):
+                    valid_transitions.append((next_state, output))
+        return valid_transitions
+
+    def _is_matching_transition(self, current_state,
+                                trans_method, target_method):
+        """Check if transition matches current state and target method"""
+        return (current_state == self.current_state
+                and trans_method == target_method)
+
+    def _satisfies_condition(self, condition):
+        """Check if the condition is satisfied"""
+        if condition is None:
+            return True
+        return self._evaluate_condition(condition)
+
+    def _execute_transition(self, transition, method):
+        """Execute the transition and update state"""
+        next_state, output = transition
 
         # Record the transition
         self.seen_methods.add(method)
