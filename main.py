@@ -7,20 +7,21 @@ class FiniteStateMachine:
         self.step_count = 0       # Count successful transitions
 
         # Define the state transition table
-        # Format: (current_state, method, condition): (next_state, output)
+        # Format: (current_state, method, condition):
+        #         (next_state, output)
         self.transitions = {
             ('F7', 'forge', None): ('F5', 'H1'),
-            ('F7', 'slur', 'd==0'): ('F4', 'H3'),
 
             ('F5', 'etch', 'q==0'): ('F3', 'H2'),
             ('F5', 'etch', 'q==1'): ('F2', 'H4'),
 
             ('F3', 'slur', None): ('F4', 'H4'),
 
+            ('F4', 'slur', 'd==0'): ('F7', 'H3'),
             ('F4', 'slur', 'd==1'): ('F0', 'H3'),
-            ('F4', 'stay', 'u==0'): ('F4', 'H0'),
 
             ('F0', 'stay', 'u==1'): ('F0', 'H2'),
+            ('F0', 'stay', 'u==0'): ('F4', 'H0'),
             ('F0', 'stay', 'u==2'): ('F6', 'H0'),
 
             ('F6', 'slog', None): ('F1', 'H3'),
@@ -163,39 +164,41 @@ def test():
 
     # Test successful transitions
     obj.d(0)  # Reset d to 0 for slur transition from F7
-    assert obj.select('slur') == 'H3'  # F7->F4 with d=0
+    assert obj.select('forge') == 'H1'  # F7->F4 with d=0
     assert obj.get_step() == 1
-    assert obj.seen_method('slur') is True
-    assert obj.seen_edge('F7', 'F4') is True
+    assert obj.seen_method('forge') is True
+    assert obj.seen_edge('F7', 'F5') is True
 
     # Test stay transition with u=0 (self-loop)
-    obj.u(0)
-    assert obj.select('stay') == 'H0'  # F4->F4 with u=0
+    obj.q(0)
+    assert obj.select('etch') == 'H2'
     assert obj.get_step() == 2
-    assert obj.seen_method('stay') is True
-    assert obj.seen_edge('F4', 'F4') is True
+    assert obj.seen_method('etch') is True
+    assert obj.seen_edge('F5', 'F3') is True
+
+    assert obj.select('slur') == 'H4'
 
     # Test slur transition from F4 to F0
     obj.d(1)
     assert obj.select('slur') == 'H3'  # F4->F0 with d=1
-    assert obj.get_step() == 3
+    assert obj.get_step() == 4
     assert obj.seen_edge('F4', 'F0') is True
 
     # Test stay transition with u=2
     obj.u(2)
     assert obj.select('stay') == 'H0'  # F0->F6 with u=2
-    assert obj.get_step() == 4
+    assert obj.get_step() == 5
     assert obj.seen_edge('F0', 'F6') is True
 
     # Test slog transition
     assert obj.select('slog') == 'H3'  # F6->F1
-    assert obj.get_step() == 5
+    assert obj.get_step() == 6
     assert obj.seen_method('slog') is True
     assert obj.seen_edge('F6', 'F1') is True
 
     # Test slur from F1 to F2
     assert obj.select('slur') == 'H1'  # F1->F2
-    assert obj.get_step() == 6
+    assert obj.get_step() == 7
     assert obj.seen_edge('F1', 'F2') is True
 
     # Test unsupported method from F2 (no outgoing transitions)
@@ -241,3 +244,27 @@ def test():
     # Test edge that should not have been seen
     assert obj3.seen_edge('F1', 'F5') is False
     assert obj3.seen_edge('F2', 'F3') is False
+
+    obj4 = main()
+    assert obj4.select('slog') == 'unsupported'
+    assert obj4.get_step() == 0
+
+    obj4.d(1)
+    obj4.q(0)
+    obj4.u(0)
+    assert obj4.seen_edge('F0', 'F6') is False
+    assert obj4.select('stall') == 'unknown'
+    assert obj4.select('forge') == 'H1'
+    assert obj4.select('etch') == 'H2'
+
+    obj4.q(0)
+    assert obj4.seen_method('forge') is True
+    assert obj4.select('slur') == 'H4'
+    assert obj4.select('slur') == 'H3'
+    assert obj4.select('trace') == 'unknown'
+
+    obj4.d(0)
+    assert obj4.select('apply') == 'unknown'
+    assert obj4.seen_method('forge') is True
+    assert obj4.select('sway') == 'unknown'
+    assert obj4.select('stay') == 'H0'
