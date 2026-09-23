@@ -268,3 +268,7 @@ def test():
     assert obj4.seen_method('forge') is True
     assert obj4.select('sway') == 'unknown'
     assert obj4.select('stay') == 'H0'
+
+# DO NOT ADD THIS TO KISPYTHON.RU !!!!!!!!!
+if __name__ == "__main__":
+    test()
